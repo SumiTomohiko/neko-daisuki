@@ -1,0 +1,57 @@
+#!/usr/bin/env yog
+
+def detect_ignored?(regexps, s)
+    return 0 < regexps.map(&get_attr('search) + apply(s)).select() do |match|
+      next match != nil
+    end.size
+end
+
+def main(logs)
+  logs.each() do |path|
+    File.open(path) do |fp|
+      while (line = fp.readline()) != nil
+        cols = line.split("\t")
+        datetime = cols[0]
+        addr = cols[1]
+        hostname = cols[2]
+        req = cols[3]
+        code = cols[4]
+        referer = cols[5]
+        ua = cols[6]
+
+        a = req.split()
+        # Some clients disconnected without requesting.
+        method = a.get(0, "")
+        path = a.get(1, "").to_path()
+        ver = a.get(2, "")
+
+        ignored_hostnames = [/\beonet\b/, /\bcrawl\b/]
+        if detect_ignored?(ignored_hostnames, hostname)
+          next
+        end
+        ignored_ua = [
+          /\bHatena Antenna\b/, /\bBaiduspider\b/, /\bGooglebot\b/,
+          /\bcrawler\b/, /\bbingbot\b/]
+        if detect_ignored?(ignored_ua, ua)
+          next
+        end
+
+        interesting_basename = ["index.html", "screencast.html"]
+        if interesting_basename.map() do |name|
+          next path.basename == name ? true : false
+        end.select() do |b|
+          next b
+        end.size == 0
+          next
+        end
+
+        # Requests at here are all interesting.
+        print(line)
+      end
+    end
+  end
+end
+
+main(ARGV.slice(1))
+
+# vim: tabstop=2 shiftwidth=2 expandtab softtabstop=2
