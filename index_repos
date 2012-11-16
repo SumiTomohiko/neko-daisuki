@@ -1,0 +1,67 @@
+#!/bin/sh
+
+zod()
+{
+  "$@"
+  if [ $? != 0 ]; then
+    echo "$@ failed."
+    exit 1
+  fi
+}
+
+format_number()
+{
+  local n s
+
+  n=$1
+  s=""
+  while [ "${n}" -gt 1000 ]
+  do
+    s="$(zod printf "%03d" $(expr ${n} % 1000)),${s}"
+    n=$(expr ${n} / 1000)
+  done
+  s="${n},${s}"
+
+  zod echo "${s}" | zod sed -e "s/,\$//"
+}
+
+repos="$1"
+html="${repos}/index.html"
+tmp="${html}.new"
+
+title="SumiTomohiko's repository"
+zod echo -n "<!doctype html>
+<html>
+<head>
+<link rel=\"stylesheet\" href=\"default.css\" type=\"text/css\"/>
+<title>${title}</title>
+</head>
+<body>
+<h1>${title}</h1>
+<table border=\"1\">
+  <thead><tr><th>File</th><th>Size [bytes]</th><th>SHA1</th></tr></thead>
+  <tbody>
+" > "${tmp}"
+
+for tar in ${repos}/*.tar.xz
+do
+  name=$(zod basename "${tar}")
+  eval $(zod stat -s "${tar}")
+  size=$(format_number ${st_size})
+  sha1=$(zod sha1 -q "${tar}")
+  zod echo "   <tr>
+      <td><a href=\"${name}\"><code>${name}</code></a></td>
+      <td class=\"numeric\"><code>${size}</code></td>
+      <td><code>${sha1}</code></td>
+    </tr>"
+done >> "${tmp}"
+
+zod echo -n "  </tbody>
+</table>
+</body>
+</html>
+" >> "${tmp}"
+
+zod mv -f "${tmp}" "${html}"
+
+# vim: tabstop=2 shiftwidth=2 expandtab softtabstop=2
